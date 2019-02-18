@@ -41,12 +41,15 @@ public final class FrameHeaderFlyweight {
   private FrameHeaderFlyweight() {}
 
   static ByteBuf encodeStreamZero(
-      final ByteBufAllocator allocator, final FrameType frameType, int flags) {
+      final ByteBufAllocator allocator, final FrameType frameType, final int flags) {
     return encode(allocator, 0, frameType, flags);
   }
 
   static ByteBuf encode(
-      final ByteBufAllocator allocator, final int streamId, final FrameType frameType, int flags) {
+      final ByteBufAllocator allocator,
+      final int streamId,
+      final FrameType frameType,
+      final int flags) {
     if (!frameType.canHaveMetadata() && ((flags & FLAGS_M) == FLAGS_M)) {
       throw new IllegalStateException("bad value for metadata flag");
     }
@@ -55,8 +58,49 @@ public final class FrameHeaderFlyweight {
 
     return allocator.buffer().writeInt(streamId).writeShort(typeAndFlags);
   }
+  
+  /**
+   * Replaces a stream id
+   * @param byteBuf
+   * @param streamId
+   * @return
+   */
+  public static int replaceStreamId(final ByteBuf byteBuf, final int streamId) {
+    int i = byteBuf.readerIndex();
+    int oldStreamId = byteBuf.getInt(i);
+    byteBuf.setInt(i, streamId);
+    return oldStreamId;
+  }
+  
+  /**
+   * Appends a stream id to a frame's header
+   * @param allocator
+   * @param byteBuf
+   * @param streamId the add to append
+   * @return a frame header with a stream id
+   */
+  public static ByteBuf appendStreamId(
+      final ByteBufAllocator allocator, final ByteBuf byteBuf, final int streamId) {
+    return allocator
+        .compositeDirectBuffer(2)
+        .addComponents(true, allocator.buffer().writeInt(streamId), byteBuf);
+  }
 
-  public static int streamId(ByteBuf byteBuf) {
+  /**
+   * Removes the stream id from the frame's header
+   *
+   * @param byteBuf a frame with a header
+   * @return returns a frame without a header - this is for sending over protocols that have stream
+   *     ids
+   */
+  public static ByteBuf removeStreamId(final ByteBuf byteBuf) {
+    byteBuf.markReaderIndex();
+    ByteBuf slice = byteBuf.skipBytes(3).slice();
+    byteBuf.resetReaderIndex();
+    return slice;
+  }
+
+  public static int streamId(final ByteBuf byteBuf) {
     byteBuf.markReaderIndex();
     int streamId = byteBuf.readInt();
     byteBuf.resetReaderIndex();
@@ -75,7 +119,7 @@ public final class FrameHeaderFlyweight {
     return (flags(byteBuf) & FLAGS_M) == FLAGS_M;
   }
 
-  public static FrameType frameType(ByteBuf byteBuf) {
+  public static FrameType frameType(final ByteBuf byteBuf) {
     byteBuf.markReaderIndex();
     byteBuf.skipBytes(Integer.BYTES);
     int typeAndFlags = byteBuf.readShort() & 0xFFFF;
@@ -103,7 +147,7 @@ public final class FrameHeaderFlyweight {
     return result;
   }
 
-  public static void ensureFrameType(final FrameType frameType, ByteBuf byteBuf) {
+  public static void ensureFrameType(final FrameType frameType, final ByteBuf byteBuf) {
     if (!disableFrameTypeCheck) {
       final FrameType typeInFrame = frameType(byteBuf);
 

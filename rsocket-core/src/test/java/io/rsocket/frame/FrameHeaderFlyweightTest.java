@@ -33,4 +33,28 @@ class FrameHeaderFlyweightTest {
     assertEquals(frameType, FrameHeaderFlyweight.frameType(header));
     header.release();
   }
+  
+  @Test
+  void replaceStreamId() {
+    ByteBuf frame = FrameHeaderFlyweight
+                       .encode(ByteBufAllocator.DEFAULT, 123, FrameType.SETUP, 0);
+    int old = FrameHeaderFlyweight.replaceStreamId(frame, 321);
+    assertEquals(123, old);
+    assertEquals(321, FrameHeaderFlyweight.streamId(frame));
+    frame.release();
+  }
+  
+  @Test
+  void removeAndAppendStreamId() {
+    ByteBuf frame = FrameHeaderFlyweight
+                      .encode(ByteBufAllocator.DEFAULT, 123, FrameType.SETUP, 0);
+  
+    ByteBuf removed = FrameHeaderFlyweight
+                        .removeStreamId(frame);
+  
+    ByteBuf append = FrameHeaderFlyweight.appendStreamId(ByteBufAllocator.DEFAULT, removed, 321);
+  
+    assertEquals(321, FrameHeaderFlyweight.streamId(append));
+    append.release();
+  }
 }
