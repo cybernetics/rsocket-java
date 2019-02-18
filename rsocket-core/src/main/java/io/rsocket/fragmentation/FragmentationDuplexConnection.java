@@ -17,10 +17,17 @@
 package io.rsocket.fragmentation;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.util.collection.IntObjectHashMap;
 import io.rsocket.DuplexConnection;
+import io.rsocket.util.NumberUtils;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.Collection;
+import java.util.Objects;
 
 /**
  * A {@link DuplexConnection} implementation that fragments and reassembles {@link ByteBuf}s.
@@ -30,27 +37,7 @@ import reactor.core.publisher.Mono;
  *     and Reassembly</a>
  */
 public final class FragmentationDuplexConnection implements DuplexConnection {
-  public FragmentationDuplexConnection(DuplexConnection connection, int mtu) {}
-
-  @Override
-  public Mono<Void> send(Publisher<ByteBuf> frames) {
-    return null;
-  }
-
-  @Override
-  public Flux<ByteBuf> receive() {
-    return null;
-  }
-
-  @Override
-  public Mono<Void> onClose() {
-    return null;
-  }
-
-  @Override
-  public void dispose() {}
-
-  /*
+  
   private final ByteBufAllocator byteBufAllocator;
 
   private final DuplexConnection delegate;
@@ -59,7 +46,7 @@ public final class FragmentationDuplexConnection implements DuplexConnection {
 
   private final IntObjectHashMap<FrameReassembler> frameReassemblers = new IntObjectHashMap<>();
 
-  */
+  
   /**
    * Creates a new instance.
    *
@@ -68,13 +55,12 @@ public final class FragmentationDuplexConnection implements DuplexConnection {
    * @throws NullPointerException if {@code delegate} is {@code null}
    * @throws IllegalArgumentException if {@code maxFragmentSize} is not {@code positive}
    */
-  /*
   // TODO: Remove once ByteBufAllocators are shared
   public FragmentationDuplexConnection(DuplexConnection delegate, int maxFragmentSize) {
     this(PooledByteBufAllocator.DEFAULT, delegate, maxFragmentSize);
   }
 
-  */
+  
   /**
    * Creates a new instance.
    *
@@ -85,7 +71,6 @@ public final class FragmentationDuplexConnection implements DuplexConnection {
    * @throws NullPointerException if {@code byteBufAllocator} or {@code delegate} are {@code null}
    * @throws IllegalArgumentException if {@code maxFragmentSize} is not {@code positive}
    */
-  /*
   public FragmentationDuplexConnection(
       ByteBufAllocator byteBufAllocator, DuplexConnection delegate, int maxFragmentSize) {
 
@@ -139,7 +124,7 @@ public final class FragmentationDuplexConnection implements DuplexConnection {
   }
 
   @Override
-  public Mono<Void> send(Publisher<Frame> frames) {
+  public Mono<Void> send(Publisher<ByteBuf> frames) {
     Objects.requireNonNull(frames, "frames must not be null");
 
     return delegate.send(
@@ -148,13 +133,13 @@ public final class FragmentationDuplexConnection implements DuplexConnection {
             .concatMap(t2 -> toFragmentedFrames(t2.getT1(), t2.getT2())));
   }
 
-  private Flux<Frame> toFragmentedFrames(int streamId, io.rsocket.framing.Frame frame) {
+  private Flux<ByteBuf> toFragmentedFrames(int streamId, io.rsocket.framing.Frame frame) {
     return this.frameFragmenter
         .fragment(frame)
         .map(fragment -> toAbstractionLeakingFrame(byteBufAllocator, streamId, fragment));
   }
 
-  private Mono<Frame> toReassembledFrames(int streamId, io.rsocket.framing.Frame fragment) {
+  private Mono<ByteBuf> toReassembledFrames(int streamId, io.rsocket.framing.Frame fragment) {
     FrameReassembler frameReassembler;
     synchronized (this) {
       frameReassembler =
@@ -164,5 +149,5 @@ public final class FragmentationDuplexConnection implements DuplexConnection {
 
     return Mono.justOrEmpty(frameReassembler.reassemble(fragment))
         .map(frame -> toAbstractionLeakingFrame(byteBufAllocator, streamId, frame));
-  }*/
+  }
 }

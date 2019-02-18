@@ -16,7 +16,16 @@
 
 package io.rsocket.fragmentation;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
+import io.netty.util.Recycler;
 import reactor.core.Disposable;
+
+import java.util.ArrayList;
+import java.util.Objects;
+
+import static io.rsocket.util.RecyclerFactory.createRecycler;
 
 /**
  * The implementation of the RSocket reassembly behavior.
@@ -26,24 +35,32 @@ import reactor.core.Disposable;
  *     and Reassembly</a>
  */
 final class FrameReassembler implements Disposable {
+  private static final Recycler<FrameReassembler> RECYCLER = createRecycler(FrameReassembler::new);
+  private final Recycler.Handle<FrameReassembler> handle;
+  private ByteBufAllocator byteBufAllocator;
+  private ReassemblyState state;
+
+  private FrameReassembler(Recycler.Handle<FrameReassembler> handle) {
+    this.handle = handle;
+  }
+
+  /**
+   * Creates a new instance
+   *
+   * @param byteBufAllocator the {@link ByteBufAllocator} to use
+   * @return the {@code FrameReassembler}
+   * @throws NullPointerException if {@code byteBufAllocator} is {@code null}
+   */
+  static FrameReassembler createFrameReassembler(ByteBufAllocator byteBufAllocator) {
+    return RECYCLER.get().setByteBufAllocator(byteBufAllocator);
+  }
+
   @Override
   public void dispose() {}
 
   @Override
   public boolean isDisposed() {
     return false;
-  }
-  /*
-  private static final Recycler<FrameReassembler> RECYCLER = createRecycler(FrameReassembler::new);
-
-  private final Handle<FrameReassembler> handle;
-
-  private ByteBufAllocator byteBufAllocator;
-
-  private ReassemblyState state;
-
-  private FrameReassembler(Handle<FrameReassembler> handle) {
-    this.handle = handle;
   }
 
   @Override
@@ -58,20 +75,6 @@ final class FrameReassembler implements Disposable {
     handle.recycle(this);
   }
 
-  */
-  /**
-   * Creates a new instance
-   *
-   * @param byteBufAllocator the {@link ByteBufAllocator} to use
-   * @return the {@code FrameReassembler}
-   * @throws NullPointerException if {@code byteBufAllocator} is {@code null}
-   */
-  /*
-  static FrameReassembler createFrameReassembler(ByteBufAllocator byteBufAllocator) {
-    return RECYCLER.get().setByteBufAllocator(byteBufAllocator);
-  }
-
-  */
   /**
    * Reassembles a frame. If the frame is not a candidate for fragmentation, emits the frame. If
    * frame is a candidate for fragmentation, accumulates the content until the final fragment.
@@ -80,7 +83,6 @@ final class FrameReassembler implements Disposable {
    * @return the reassembled frame if complete, otherwise {@code null}
    * @throws NullPointerException if {@code frame} is {@code null}
    */
-  /*
   @Nullable
   Frame reassemble(Frame frame) {
     Objects.requireNonNull(frame, "frame must not be null");
@@ -163,5 +165,5 @@ final class FrameReassembler implements Disposable {
           ? metadata.retain()
           : Unpooled.wrappedBuffer(this.metadata, metadata.retain());
     }
-  }*/
+  }
 }

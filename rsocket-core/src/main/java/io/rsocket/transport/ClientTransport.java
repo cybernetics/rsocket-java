@@ -28,5 +28,9 @@ public interface ClientTransport extends Transport {
    *
    * @return {@code Publisher}, every subscription returns a single {@code DuplexConnection}.
    */
-  Mono<DuplexConnection> connect();
+  default Mono<DuplexConnection> connect() {
+    return connect(0);
+  }
+  
+  Mono<DuplexConnection> connect(int mtu);
 }

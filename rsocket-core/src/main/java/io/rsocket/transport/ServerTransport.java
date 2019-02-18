@@ -32,7 +32,11 @@ public interface ServerTransport<T extends Closeable> extends Transport {
    * @return A handle to retrieve information about a started server.
    * @throws NullPointerException if {@code acceptor} is {@code null}
    */
-  Mono<T> start(ConnectionAcceptor acceptor);
+  default Mono<T> start(ConnectionAcceptor acceptor) {
+    return start(acceptor, 0);
+  }
+  
+  Mono<T> start(ConnectionAcceptor acceptor, int mtu);
 
   /** A contract to accept a new {@code DuplexConnection}. */
   interface ConnectionAcceptor extends Function<DuplexConnection, Publisher<Void>> {

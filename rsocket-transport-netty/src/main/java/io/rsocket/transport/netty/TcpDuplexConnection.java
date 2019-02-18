@@ -20,7 +20,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.rsocket.DuplexConnection;
 import io.rsocket.frame.FrameLengthFlyweight;
-import java.util.Objects;
 import org.reactivestreams.Publisher;
 import reactor.core.Disposable;
 import reactor.core.Fuseable;
@@ -29,18 +28,33 @@ import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
 import reactor.netty.FutureMono;
 
+import java.util.Objects;
+
 /** An implementation of {@link DuplexConnection} that connects via TCP. */
 public final class TcpDuplexConnection implements DuplexConnection {
 
   private final Connection connection;
   private final Disposable channelClosed;
   private final ByteBufAllocator allocator = ByteBufAllocator.DEFAULT;
+  private final boolean encodeLength;
+
   /**
    * Creates a new instance
    *
    * @param connection the {@link Connection} to for managing the server
    */
   public TcpDuplexConnection(Connection connection) {
+    this(connection, true);
+  }
+
+  /**
+   * Creates a new instance
+   *
+   * @param encodeLength indicates if this connection should encode the length or not.
+   * @param connection the {@link Connection} to for managing the server
+   */
+  public TcpDuplexConnection(Connection connection, boolean encodeLength) {
+    this.encodeLength = encodeLength;
     this.connection = Objects.requireNonNull(connection, "connection must not be null");
     this.channelClosed =
         FutureMono.from(connection.channel().closeFuture())
@@ -101,20 +115,21 @@ public final class TcpDuplexConnection implements DuplexConnection {
                     queueSubscription,
                     frameFlux,
                     connection.channel(),
-                    frame ->
-                        FrameLengthFlyweight.encode(allocator, frame.readableBytes(), frame)
-                            .retain(),
+                    this::encode,
                     ByteBuf::readableBytes);
               } else {
                 return new SendPublisher<>(
-                    frameFlux,
-                    connection.channel(),
-                    frame ->
-                        FrameLengthFlyweight.encode(allocator, frame.readableBytes(), frame)
-                            .retain(),
-                    ByteBuf::readableBytes);
+                    frameFlux, connection.channel(), this::encode, ByteBuf::readableBytes);
               }
             })
         .then();
+  }
+
+  private ByteBuf encode(ByteBuf frame) {
+    if (encodeLength) {
+      return FrameLengthFlyweight.encode(allocator, frame.readableBytes(), frame).retain();
+    } else {
+      return frame;
+    }
   }
 }

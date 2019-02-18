@@ -16,6 +16,15 @@
 
 package io.rsocket.fragmentation;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.SynchronousSink;
+
+import java.util.Objects;
+
 /**
  * The implementation of the RSocket fragmentation behavior.
  *
@@ -24,28 +33,27 @@ package io.rsocket.fragmentation;
  *     and Reassembly</a>
  */
 final class FrameFragmenter {
-  /*
+  
   private final ByteBufAllocator byteBufAllocator;
 
   private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
   private final int maxFragmentSize;
-
-  */
+  
   /**
    * Creates a new instance
    *
    * @param byteBufAllocator the {@link ByteBufAllocator} to use
    * @param maxFragmentSize the maximum size of each fragment
    */
-  /*
+  
   FrameFragmenter(ByteBufAllocator byteBufAllocator, int maxFragmentSize) {
     this.byteBufAllocator =
         Objects.requireNonNull(byteBufAllocator, "byteBufAllocator must not be null");
     this.maxFragmentSize = maxFragmentSize;
   }
 
-  */
+  
   /**
    * Returns a {@link Flux} of fragments frames
    *
@@ -53,7 +61,6 @@ final class FrameFragmenter {
    * @return a {@link Flux} of fragment frames
    * @throws NullPointerException if {@code frame} is {@code null}
    */
-  /*
   public Flux<ByteBuf> fragment(ByteBuf frame) {
     Objects.requireNonNull(frame, "frame must not be null");
 
@@ -187,5 +194,5 @@ final class FrameFragmenter {
       metadataIndex += fragment.readableBytes();
       return fragment;
     }
-  }*/
+  }
 }
