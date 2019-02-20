@@ -16,6 +16,8 @@
 
 package io.rsocket.fragmentation;
 
+import static io.rsocket.fragmentation.FrameFragmenter.fragmentFrame;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.rsocket.DuplexConnection;
@@ -27,8 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import static io.rsocket.fragmentation.FrameFragmenter.fragmentFrame;
 
 /**
  * A {@link DuplexConnection} implementation that fragments and reassembles {@link ByteBuf}s.

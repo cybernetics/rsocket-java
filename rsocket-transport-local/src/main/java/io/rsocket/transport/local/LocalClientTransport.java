@@ -23,11 +23,10 @@ import io.rsocket.fragmentation.FragmentationDuplexConnection;
 import io.rsocket.transport.ClientTransport;
 import io.rsocket.transport.ServerTransport;
 import io.rsocket.transport.local.LocalServerTransport.ServerDuplexConnectionAcceptor;
+import java.util.Objects;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoProcessor;
 import reactor.core.publisher.UnicastProcessor;
-
-import java.util.Objects;
 
 /**
  * An implementation of {@link ClientTransport} that connects to a {@link ServerTransport} in the
@@ -54,8 +53,7 @@ public final class LocalClientTransport implements ClientTransport {
     return new LocalClientTransport(name);
   }
 
-  @Override
-  public Mono<DuplexConnection> connect() {
+  private Mono<DuplexConnection> connect() {
     return Mono.defer(
         () -> {
           ServerDuplexConnectionAcceptor server = LocalServerTransport.findServer(name);
@@ -75,10 +73,14 @@ public final class LocalClientTransport implements ClientTransport {
 
   @Override
   public Mono<DuplexConnection> connect(int mtu) {
-    return connect()
-        .map(
-            duplexConnection ->
-                new FragmentationDuplexConnection(
-                    duplexConnection, ByteBufAllocator.DEFAULT, mtu, false));
+    Mono<DuplexConnection> connect = connect();
+    if (mtu > 0) {
+      return connect.map(
+          duplexConnection ->
+              new FragmentationDuplexConnection(
+                  duplexConnection, ByteBufAllocator.DEFAULT, mtu, false));
+    } else {
+      return connect;
+    }
   }
 }

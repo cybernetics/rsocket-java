@@ -24,12 +24,11 @@ import io.netty.util.ReferenceCountUtil;
 import io.netty.util.collection.IntObjectHashMap;
 import io.netty.util.collection.IntObjectMap;
 import io.rsocket.frame.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.SynchronousSink;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The implementation of the RSocket reassembly behavior.

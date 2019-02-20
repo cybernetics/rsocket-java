@@ -17,12 +17,11 @@
 package io.rsocket;
 
 import io.netty.buffer.ByteBuf;
+import java.nio.channels.ClosedChannelException;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.nio.channels.ClosedChannelException;
 
 /** Represents a connection with input/output that the protocol uses. */
 public interface DuplexConnection extends Availability, Closeable {

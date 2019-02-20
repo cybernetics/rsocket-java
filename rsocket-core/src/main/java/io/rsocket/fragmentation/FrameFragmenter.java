@@ -21,11 +21,10 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 import io.rsocket.frame.*;
+import java.util.function.Consumer;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SynchronousSink;
-
-import java.util.function.Consumer;
 
 /**
  * The implementation of the RSocket fragmentation behavior.

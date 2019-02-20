@@ -74,7 +74,7 @@ public final class FrameHeaderFlyweight {
     byteBuf.resetReaderIndex();
     return typeAndFlags & FRAME_FLAGS_MASK;
   }
-  
+
   public static boolean hasMetadata(ByteBuf byteBuf) {
     return (flags(byteBuf) & FLAGS_M) == FLAGS_M;
   }
