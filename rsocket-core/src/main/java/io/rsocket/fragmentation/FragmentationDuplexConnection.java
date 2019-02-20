@@ -18,16 +18,17 @@ package io.rsocket.fragmentation;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.util.collection.IntObjectHashMap;
 import io.rsocket.DuplexConnection;
-import io.rsocket.util.NumberUtils;
+import io.rsocket.frame.FrameHeaderFlyweight;
+import io.rsocket.frame.FrameLengthFlyweight;
+import io.rsocket.frame.FrameType;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.Collection;
-import java.util.Objects;
+import static io.rsocket.fragmentation.FrameFragmenter.fragmentFrame;
 
 /**
  * A {@link DuplexConnection} implementation that fragments and reassembles {@link ByteBuf}s.
@@ -37,77 +38,65 @@ import java.util.Objects;
  *     and Reassembly</a>
  */
 public final class FragmentationDuplexConnection implements DuplexConnection {
-  
-  private final ByteBufAllocator byteBufAllocator;
-
+  private static final Logger logger = LoggerFactory.getLogger(FragmentationDuplexConnection.class);
   private final DuplexConnection delegate;
+  private final int mtu;
+  private final ByteBufAllocator allocator;
+  private final FrameReassembler frameReassembler;
+  private final boolean encodeLength;
 
-  private final FrameFragmenter frameFragmenter;
-
-  private final IntObjectHashMap<FrameReassembler> frameReassemblers = new IntObjectHashMap<>();
-
-  
-  /**
-   * Creates a new instance.
-   *
-   * @param delegate the {@link DuplexConnection} to decorate
-   * @param maxFragmentSize the maximum fragment size
-   * @throws NullPointerException if {@code delegate} is {@code null}
-   * @throws IllegalArgumentException if {@code maxFragmentSize} is not {@code positive}
-   */
-  // TODO: Remove once ByteBufAllocators are shared
-  public FragmentationDuplexConnection(DuplexConnection delegate, int maxFragmentSize) {
-    this(PooledByteBufAllocator.DEFAULT, delegate, maxFragmentSize);
-  }
-
-  
-  /**
-   * Creates a new instance.
-   *
-   * @param byteBufAllocator the {@link ByteBufAllocator} to use
-   * @param delegate the {@link DuplexConnection} to decorate
-   * @param maxFragmentSize the maximum fragment size. A value of 0 indicates that frames should not
-   *     be fragmented.
-   * @throws NullPointerException if {@code byteBufAllocator} or {@code delegate} are {@code null}
-   * @throws IllegalArgumentException if {@code maxFragmentSize} is not {@code positive}
-   */
   public FragmentationDuplexConnection(
-      ByteBufAllocator byteBufAllocator, DuplexConnection delegate, int maxFragmentSize) {
-
-    this.byteBufAllocator =
-        Objects.requireNonNull(byteBufAllocator, "byteBufAllocator must not be null");
-    this.delegate = Objects.requireNonNull(delegate, "delegate must not be null");
-
-    NumberUtils.requireNonNegative(maxFragmentSize, "maxFragmentSize must be positive");
-
-    this.frameFragmenter = new FrameFragmenter(byteBufAllocator, maxFragmentSize);
+      DuplexConnection delegate, ByteBufAllocator allocator, int mtu, boolean encodeLength) {
+    this.encodeLength = encodeLength;
+    this.allocator = allocator;
+    this.delegate = delegate;
+    this.mtu = mtu;
+    this.frameReassembler = new FrameReassembler(allocator);
 
     delegate
         .onClose()
         .doFinally(
-            signalType -> {
-              Collection<FrameReassembler> values;
-              synchronized (FragmentationDuplexConnection.this) {
-                values = frameReassemblers.values();
-              }
-              values.forEach(FrameReassembler::dispose);
+            s -> {
+              frameReassembler.dispose();
             })
         .subscribe();
   }
 
-  @Override
-  public double availability() {
-    return delegate.availability();
+  private boolean shouldFragment(FrameType frameType, int readableBytes) {
+    if (frameType.isFragmentable()) {
+      return readableBytes > mtu;
+    } else {
+      return false;
+    }
   }
 
   @Override
-  public void dispose() {
-    delegate.dispose();
+  public Mono<Void> send(Publisher<ByteBuf> frames) {
+    return Flux.from(frames).concatMap(this::sendOne).then();
   }
 
   @Override
-  public boolean isDisposed() {
-    return delegate.isDisposed();
+  public Mono<Void> sendOne(ByteBuf frame) {
+    FrameType frameType = FrameHeaderFlyweight.frameType(frame);
+    int readableBytes = frame.readableBytes();
+    if (shouldFragment(frameType, readableBytes)) {
+      return delegate.send(fragmentFrame(allocator, mtu, frame, frameType, encodeLength));
+    } else {
+      return delegate.sendOne(encode(frame));
+    }
+  }
+
+  private ByteBuf encode(ByteBuf frame) {
+    if (encodeLength) {
+      return FrameLengthFlyweight.encode(allocator, frame.readableBytes(), frame).retain();
+    } else {
+      return frame;
+    }
+  }
+
+  @Override
+  public Flux<ByteBuf> receive() {
+    return delegate.receive().handle(frameReassembler::reassembleFrame);
   }
 
   @Override
@@ -116,38 +105,7 @@ public final class FragmentationDuplexConnection implements DuplexConnection {
   }
 
   @Override
-  public Flux<ByteBuf> receive() {
-    return delegate
-        .receive()
-        .map(AbstractionLeakingFrameUtils::fromAbstractionLeakingFrame)
-        .concatMap(t2 -> toReassembledFrames(t2.getT1(), t2.getT2()));
-  }
-
-  @Override
-  public Mono<Void> send(Publisher<ByteBuf> frames) {
-    Objects.requireNonNull(frames, "frames must not be null");
-
-    return delegate.send(
-        Flux.from(frames)
-            .map(AbstractionLeakingFrameUtils::fromAbstractionLeakingFrame)
-            .concatMap(t2 -> toFragmentedFrames(t2.getT1(), t2.getT2())));
-  }
-
-  private Flux<ByteBuf> toFragmentedFrames(int streamId, io.rsocket.framing.Frame frame) {
-    return this.frameFragmenter
-        .fragment(frame)
-        .map(fragment -> toAbstractionLeakingFrame(byteBufAllocator, streamId, fragment));
-  }
-
-  private Mono<ByteBuf> toReassembledFrames(int streamId, io.rsocket.framing.Frame fragment) {
-    FrameReassembler frameReassembler;
-    synchronized (this) {
-      frameReassembler =
-          frameReassemblers.computeIfAbsent(
-              streamId, i -> createFrameReassembler(byteBufAllocator));
-    }
-
-    return Mono.justOrEmpty(frameReassembler.reassemble(fragment))
-        .map(frame -> toAbstractionLeakingFrame(byteBufAllocator, streamId, frame));
+  public void dispose() {
+    delegate.dispose();
   }
 }
