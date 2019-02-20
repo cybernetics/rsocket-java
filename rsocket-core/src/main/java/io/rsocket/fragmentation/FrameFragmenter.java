@@ -21,10 +21,11 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 import io.rsocket.frame.*;
-import java.util.function.Consumer;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SynchronousSink;
+
+import java.util.function.Consumer;
 
 /**
  * The implementation of the RSocket fragmentation behavior.
@@ -50,32 +51,39 @@ final class FrameFragmenter {
 
           @Override
           public void accept(SynchronousSink<ByteBuf> sink) {
-            ByteBuf byteBuf;
-            if (first) {
-              first = false;
-              byteBuf =
-                  encodeFirstFragment(allocator, mtu, frame, frameType, streamId, metadata, data);
+            try {
+              ByteBuf byteBuf;
+              if (first) {
+                first = false;
+                byteBuf =
+                    encodeFirstFragment(allocator, mtu, frame, frameType, streamId, metadata, data);
 
-            } else {
-              byteBuf = encodeFollowsFragment(allocator, mtu, streamId, metadata, data);
-            }
-
-            sink.next(encode(allocator, byteBuf, encodeLength));
-
-            if (metadata.isReadable() && data.isReadable()) {
-              try {
-                sink.complete();
-              } finally {
-                ReferenceCountUtil.safeRelease(frame);
-                ReferenceCountUtil.safeRelease(metadata);
-                ReferenceCountUtil.safeRelease(data);
+              } else {
+                byteBuf = encodeFollowsFragment(allocator, mtu, streamId, metadata, data);
               }
+
+              sink.next(encode(allocator, byteBuf, encodeLength));
+
+              if (!metadata.isReadable() && !data.isReadable()) {
+                try {
+                  sink.complete();
+                } finally {
+                  ReferenceCountUtil.safeRelease(frame);
+                  ReferenceCountUtil.safeRelease(metadata);
+                  ReferenceCountUtil.safeRelease(data);
+                }
+              }
+            } catch (Throwable t) {
+              ReferenceCountUtil.safeRelease(frame);
+              ReferenceCountUtil.safeRelease(metadata);
+              ReferenceCountUtil.safeRelease(data);
+              sink.error(t);
             }
           }
         });
   }
 
-  private static ByteBuf encodeFirstFragment(
+  static ByteBuf encodeFirstFragment(
       ByteBufAllocator allocator,
       int mtu,
       ByteBuf frame,
@@ -149,7 +157,7 @@ final class FrameFragmenter {
     }
   }
 
-  private static ByteBuf encodeFollowsFragment(
+  static ByteBuf encodeFollowsFragment(
       ByteBufAllocator allocator, int mtu, int streamId, ByteBuf metadata, ByteBuf data) {
     // subtract the header bytes
     int m = mtu - FrameHeaderFlyweight.size();
@@ -169,12 +177,16 @@ final class FrameFragmenter {
       dataFragment = data.readRetainedSlice(r);
     }
 
-    boolean follows = !metadata.isReadable() && !data.isReadable();
+    boolean follows =
+        metadata == Unpooled.EMPTY_BUFFER
+            ? data.isReadable()
+            : data.isReadable() || metadata.isReadable();
+
     return PayloadFrameFlyweight.encode(
-        allocator, streamId, follows, false, false, metadataFragment, dataFragment);
+        allocator, streamId, follows, false, true, metadataFragment, dataFragment);
   }
 
-  private static ByteBuf getMetadata(ByteBuf frame, FrameType frameType) {
+  static ByteBuf getMetadata(ByteBuf frame, FrameType frameType) {
     boolean hasMetadata = FrameHeaderFlyweight.hasMetadata(frame);
     if (hasMetadata) {
       ByteBuf metadata;
@@ -207,7 +219,7 @@ final class FrameFragmenter {
     }
   }
 
-  private static ByteBuf getData(ByteBuf frame, FrameType frameType) {
+  static ByteBuf getData(ByteBuf frame, FrameType frameType) {
     ByteBuf data;
     switch (frameType) {
       case REQUEST_FNF:
@@ -235,7 +247,7 @@ final class FrameFragmenter {
     return data.retain();
   }
 
-  private static ByteBuf encode(ByteBufAllocator allocator, ByteBuf frame, boolean encodeLength) {
+  static ByteBuf encode(ByteBufAllocator allocator, ByteBuf frame, boolean encodeLength) {
     if (encodeLength) {
       return FrameLengthFlyweight.encode(allocator, frame.readableBytes(), frame).retain();
     } else {

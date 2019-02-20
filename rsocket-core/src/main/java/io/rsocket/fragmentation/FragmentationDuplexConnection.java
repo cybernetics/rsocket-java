@@ -16,8 +16,6 @@
 
 package io.rsocket.fragmentation;
 
-import static io.rsocket.fragmentation.FrameFragmenter.fragmentFrame;
-
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.rsocket.DuplexConnection;
@@ -30,6 +28,8 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import static io.rsocket.fragmentation.FrameFragmenter.fragmentFrame;
+
 /**
  * A {@link DuplexConnection} implementation that fragments and reassembles {@link ByteBuf}s.
  *
@@ -38,6 +38,7 @@ import reactor.core.publisher.Mono;
  *     and Reassembly</a>
  */
 public final class FragmentationDuplexConnection implements DuplexConnection {
+  private static final int MIN_MTU_SIZE = 64;
   private static final Logger logger = LoggerFactory.getLogger(FragmentationDuplexConnection.class);
   private final DuplexConnection delegate;
   private final int mtu;
@@ -47,19 +48,16 @@ public final class FragmentationDuplexConnection implements DuplexConnection {
 
   public FragmentationDuplexConnection(
       DuplexConnection delegate, ByteBufAllocator allocator, int mtu, boolean encodeLength) {
+    if (mtu < 64) {
+      throw new IllegalStateException("smallest allowed mtu size is 64 bytes");
+    }
     this.encodeLength = encodeLength;
     this.allocator = allocator;
     this.delegate = delegate;
     this.mtu = mtu;
     this.frameReassembler = new FrameReassembler(allocator);
 
-    delegate
-        .onClose()
-        .doFinally(
-            s -> {
-              frameReassembler.dispose();
-            })
-        .subscribe();
+    delegate.onClose().doFinally(s -> frameReassembler.dispose()).subscribe();
   }
 
   private boolean shouldFragment(FrameType frameType, int readableBytes) {
