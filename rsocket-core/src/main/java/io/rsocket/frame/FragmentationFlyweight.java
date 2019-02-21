@@ -13,11 +13,9 @@ public class FragmentationFlyweight {
   public static ByteBuf encode(
       final ByteBufAllocator allocator, ByteBuf header, @Nullable ByteBuf metadata, ByteBuf data) {
     if (metadata == null) {
-      return allocator.compositeDirectBuffer(2).addComponents(true, header, data);
-    } else {
-      return allocator
-          .compositeDirectBuffer(3)
-          .addComponents(true, header.writeInt(metadata.readableBytes()), metadata, data);
+      return DataAndMetadataFlyweight.encodeOnlyData(allocator, header, data);
+    }  else {
+      return DataAndMetadataFlyweight.encode(allocator, header, metadata, data);
     }
   }
 }

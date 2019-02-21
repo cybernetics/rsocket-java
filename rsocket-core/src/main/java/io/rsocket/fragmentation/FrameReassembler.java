@@ -24,11 +24,12 @@ import io.netty.util.ReferenceCountUtil;
 import io.netty.util.collection.IntObjectHashMap;
 import io.netty.util.collection.IntObjectMap;
 import io.rsocket.frame.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.SynchronousSink;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * The implementation of the RSocket reassembly behavior.
@@ -40,9 +41,9 @@ import reactor.core.publisher.SynchronousSink;
 final class FrameReassembler extends AtomicBoolean implements Disposable {
   private static final Logger logger = LoggerFactory.getLogger(FrameReassembler.class);
 
-  private final IntObjectMap<ByteBuf> headers;
-  private final IntObjectMap<CompositeByteBuf> metadata;
-  private final IntObjectMap<CompositeByteBuf> data;
+  final IntObjectMap<ByteBuf> headers;
+  final IntObjectMap<CompositeByteBuf> metadata;
+  final IntObjectMap<CompositeByteBuf> data;
 
   private final ByteBufAllocator allocator;
 
@@ -60,14 +61,17 @@ final class FrameReassembler extends AtomicBoolean implements Disposable {
         for (ByteBuf byteBuf : headers.values()) {
           ReferenceCountUtil.safeRelease(byteBuf);
         }
+        headers.clear();
 
         for (ByteBuf byteBuf : metadata.values()) {
           ReferenceCountUtil.safeRelease(byteBuf);
         }
+        metadata.clear();
 
         for (ByteBuf byteBuf : data.values()) {
           ReferenceCountUtil.safeRelease(byteBuf);
         }
+        data.clear();
       }
     }
   }
@@ -93,7 +97,14 @@ final class FrameReassembler extends AtomicBoolean implements Disposable {
   }
 
   synchronized CompositeByteBuf getData(int streamId) {
-    return data.get(streamId);
+    CompositeByteBuf byteBuf = data.get(streamId);
+
+    if (byteBuf == null) {
+      byteBuf = allocator.compositeBuffer();
+      data.put(streamId, byteBuf);
+    }
+
+    return byteBuf;
   }
 
   synchronized ByteBuf removeHeader(int streamId) {
@@ -134,18 +145,17 @@ final class FrameReassembler extends AtomicBoolean implements Disposable {
     ByteBuf header = removeHeader(streamId);
     if (header != null) {
       if (FrameHeaderFlyweight.hasMetadata(header)) {
-        if (FrameHeaderFlyweight.hasMetadata(frame)) {
-          ByteBuf assembledFrame = assembleFrameWithMetadata(frame, streamId, header);
-          sink.next(assembledFrame);
-        } else {
-          ByteBuf data = assembleData(frame, streamId);
-          ByteBuf assembledFrame = FragmentationFlyweight.encode(allocator, header, data);
-          sink.next(assembledFrame);
-        }
+        ByteBuf assembledFrame = assembleFrameWithMetadata(frame, streamId, header);
+        sink.next(assembledFrame);
+      } else {
+        ByteBuf data = assembleData(frame, streamId);
+        ByteBuf assembledFrame = FragmentationFlyweight.encode(allocator, header, data);
+        sink.next(assembledFrame);
       }
     } else {
       sink.next(frame);
     }
+    sink.complete();
   }
 
   void handleFollowsFlag(ByteBuf frame, int streamId, FrameType frameType) {
@@ -153,7 +163,7 @@ final class FrameReassembler extends AtomicBoolean implements Disposable {
     if (header == null) {
       int flags = FrameHeaderFlyweight.flags(frame);
       header = FrameHeaderFlyweight.encode(allocator, streamId, frameType, flags);
-      if (frameType == FrameType.REQUEST_CHANNEL) {
+      if (frameType == FrameType.REQUEST_CHANNEL || frameType == FrameType.REQUEST_STREAM) {
         int i = RequestChannelFrameFlyweight.initialRequestN(frame);
         header.writeInt(i);
       }
@@ -258,9 +268,6 @@ final class FrameReassembler extends AtomicBoolean implements Disposable {
     } else {
       metadata = PayloadFrameFlyweight.metadata(frame);
     }
-
-    int metadataLength = metadata.readableBytes();
-    header.writeInt(metadataLength);
 
     ByteBuf data = assembleData(frame, streamId);
 

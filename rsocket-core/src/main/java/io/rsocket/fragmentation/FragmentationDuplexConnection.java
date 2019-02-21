@@ -48,7 +48,7 @@ public final class FragmentationDuplexConnection implements DuplexConnection {
 
   public FragmentationDuplexConnection(
       DuplexConnection delegate, ByteBufAllocator allocator, int mtu, boolean encodeLength) {
-    if (mtu < 64) {
+    if (mtu < MIN_MTU_SIZE) {
       throw new IllegalStateException("smallest allowed mtu size is 64 bytes");
     }
     this.encodeLength = encodeLength;
