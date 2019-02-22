@@ -31,7 +31,7 @@ public final class TcpPing {
     Mono<RSocket> client =
         RSocketFactory.connect()
             .frameDecoder(PayloadDecoder.ZERO_COPY)
-            .fragment(512)
+            .fragment(0)
             .transport(TcpClientTransport.create(7878))
             .start();
 
