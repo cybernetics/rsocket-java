@@ -231,7 +231,6 @@ final class FrameReassembler extends AtomicBoolean implements Disposable {
     try {
       FrameType frameType = FrameHeaderFlyweight.frameType(frame);
       int streamId = FrameHeaderFlyweight.streamId(frame);
-
       switch (frameType) {
         case CANCEL:
         case ERROR:

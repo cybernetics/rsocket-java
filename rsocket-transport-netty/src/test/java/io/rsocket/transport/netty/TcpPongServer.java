@@ -26,6 +26,7 @@ public final class TcpPongServer {
   public static void main(String... args) {
     RSocketFactory.receive()
         .frameDecoder(PayloadDecoder.ZERO_COPY)
+        .fragment(512)
         .acceptor(new PingHandler())
         .transport(TcpServerTransport.create(7878))
         .start()

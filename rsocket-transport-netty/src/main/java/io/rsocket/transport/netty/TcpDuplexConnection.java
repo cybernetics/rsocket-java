@@ -20,7 +20,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.rsocket.DuplexConnection;
 import io.rsocket.frame.FrameLengthFlyweight;
-import java.util.Objects;
 import org.reactivestreams.Publisher;
 import reactor.core.Disposable;
 import reactor.core.Fuseable;
@@ -28,6 +27,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.netty.Connection;
 import reactor.netty.FutureMono;
+
+import java.util.Objects;
 
 /** An implementation of {@link DuplexConnection} that connects via TCP. */
 public final class TcpDuplexConnection implements DuplexConnection {
@@ -90,15 +91,7 @@ public final class TcpDuplexConnection implements DuplexConnection {
 
   @Override
   public Flux<ByteBuf> receive() {
-    return connection
-        .inbound()
-        .receive()
-        .map(
-            byteBuf -> {
-              ByteBuf frame = FrameLengthFlyweight.frame(byteBuf);
-              frame.retain();
-              return frame;
-            });
+    return connection.inbound().receive().map(this::decode);
   }
 
   @Override
@@ -127,6 +120,14 @@ public final class TcpDuplexConnection implements DuplexConnection {
   private ByteBuf encode(ByteBuf frame) {
     if (encodeLength) {
       return FrameLengthFlyweight.encode(allocator, frame.readableBytes(), frame).retain();
+    } else {
+      return frame;
+    }
+  }
+
+  private ByteBuf decode(ByteBuf frame) {
+    if (encodeLength) {
+      return FrameLengthFlyweight.frame(frame).retain();
     } else {
       return frame;
     }

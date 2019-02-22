@@ -18,6 +18,7 @@ package io.rsocket;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.util.ReferenceCountUtil;
 import io.netty.util.collection.IntObjectHashMap;
 import io.rsocket.exceptions.ConnectionErrorException;
 import io.rsocket.exceptions.Exceptions;
@@ -26,13 +27,6 @@ import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.internal.LimitableRequestPublisher;
 import io.rsocket.internal.UnboundedProcessor;
 import io.rsocket.internal.UnicastMonoProcessor;
-import java.nio.channels.ClosedChannelException;
-import java.time.Duration;
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Consumer;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -40,6 +34,14 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
 import reactor.core.publisher.UnicastProcessor;
+
+import java.nio.channels.ClosedChannelException;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Consumer;
 
 /** Client Side of a RSocket socket. Sends {@link ByteBuf}s to a {@link RSocketServer} */
 class RSocketClient implements RSocket {
@@ -220,7 +222,6 @@ class RSocketClient implements RSocket {
                           false,
                           payload.hasMetadata() ? payload.sliceMetadata().retain() : null,
                           payload.sliceData().retain());
-
                   payload.release();
                   sendProcessor.onNext(requestFrame);
                 }));
@@ -292,12 +293,12 @@ class RSocketClient implements RSocket {
                           false,
                           payload.sliceMetadata().retain(),
                           payload.sliceData().retain());
+                  payload.release();
 
                   UnicastMonoProcessor<Payload> receiver = UnicastMonoProcessor.create();
                   receivers.put(streamId, receiver);
 
                   sendProcessor.onNext(requestFrame);
-
                   return receiver
                       .doOnError(
                           t ->
@@ -472,8 +473,10 @@ class RSocketClient implements RSocket {
       } else {
         handleFrame(streamId, type, frame);
       }
-    } finally {
       frame.release();
+    } catch (Throwable t) {
+      ReferenceCountUtil.safeRelease(frame);
+      throw reactor.core.Exceptions.propagate(t);
     }
   }
 

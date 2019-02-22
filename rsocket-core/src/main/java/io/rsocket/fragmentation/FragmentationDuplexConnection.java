@@ -91,10 +91,21 @@ public final class FragmentationDuplexConnection implements DuplexConnection {
       return frame;
     }
   }
+  
+  private ByteBuf decode(ByteBuf frame) {
+    if (encodeLength) {
+      return FrameLengthFlyweight.frame(frame).retain();
+    } else {
+      return frame;
+    }
+  }
 
   @Override
   public Flux<ByteBuf> receive() {
-    return delegate.receive().handle(frameReassembler::reassembleFrame);
+    return delegate.receive().handle((byteBuf, sink) -> {
+      ByteBuf decode = decode(byteBuf);
+      frameReassembler.reassembleFrame(decode, sink);
+    });
   }
 
   @Override

@@ -249,7 +249,7 @@ final class FrameFragmenter {
 
   static ByteBuf encode(ByteBufAllocator allocator, ByteBuf frame, boolean encodeLength) {
     if (encodeLength) {
-      return FrameLengthFlyweight.encode(allocator, frame.readableBytes(), frame).retain();
+      return FrameLengthFlyweight.encode(allocator, frame.readableBytes(), frame);
     } else {
       return frame;
     }
