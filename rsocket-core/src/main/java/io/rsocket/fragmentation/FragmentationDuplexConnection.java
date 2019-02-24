@@ -28,6 +28,8 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.Objects;
+
 import static io.rsocket.fragmentation.FrameFragmenter.fragmentFrame;
 
 /**
@@ -48,8 +50,10 @@ public final class FragmentationDuplexConnection implements DuplexConnection {
 
   public FragmentationDuplexConnection(
       DuplexConnection delegate, ByteBufAllocator allocator, int mtu, boolean encodeLength) {
+    Objects.requireNonNull(delegate, "delegate must not be null");
+    Objects.requireNonNull(allocator, "byteBufAllocator must not be null");
     if (mtu < MIN_MTU_SIZE) {
-      throw new IllegalStateException("smallest allowed mtu size is 64 bytes");
+      throw new IllegalArgumentException("smallest allowed mtu size is 64 bytes");
     }
     this.encodeLength = encodeLength;
     this.allocator = allocator;

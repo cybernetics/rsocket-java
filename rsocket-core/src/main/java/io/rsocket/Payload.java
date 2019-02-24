@@ -32,19 +32,23 @@ public interface Payload extends ReferenceCounted {
   boolean hasMetadata();
 
   /**
-   * Returns the Payload metadata. Always non-null, check {@link #hasMetadata()} to differentiate
+   * Returns a slice Payload metadata. Always non-null, check {@link #hasMetadata()} to differentiate
    * null from "".
    *
    * @return payload metadata.
    */
   ByteBuf sliceMetadata();
-
+  
   /**
    * Returns the Payload data. Always non-null.
    *
    * @return payload data.
    */
   ByteBuf sliceData();
+ 
+  ByteBuf data();
+  
+  ByteBuf metadata();
 
   /** Increases the reference count by {@code 1}. */
   @Override

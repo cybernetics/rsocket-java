@@ -24,10 +24,11 @@ import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.Recycler;
 import io.netty.util.Recycler.Handle;
 import io.rsocket.Payload;
+
+import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
-import javax.annotation.Nullable;
 
 public final class ByteBufPayload extends AbstractReferenceCounted implements Payload {
   private static final Recycler<ByteBufPayload> RECYCLER =
@@ -43,62 +44,6 @@ public final class ByteBufPayload extends AbstractReferenceCounted implements Pa
 
   private ByteBufPayload(final Handle<ByteBufPayload> handle) {
     this.handle = handle;
-  }
-
-  @Override
-  public boolean hasMetadata() {
-    return metadata != null;
-  }
-
-  @Override
-  public ByteBuf sliceMetadata() {
-    return metadata == null ? Unpooled.EMPTY_BUFFER : metadata.slice();
-  }
-
-  @Override
-  public ByteBuf sliceData() {
-    return data.slice();
-  }
-
-  @Override
-  public ByteBufPayload retain() {
-    super.retain();
-    return this;
-  }
-
-  @Override
-  public ByteBufPayload retain(int increment) {
-    super.retain(increment);
-    return this;
-  }
-
-  @Override
-  public ByteBufPayload touch() {
-    data.touch();
-    if (metadata != null) {
-      metadata.touch();
-    }
-    return this;
-  }
-
-  @Override
-  public ByteBufPayload touch(Object hint) {
-    data.touch(hint);
-    if (metadata != null) {
-      metadata.touch(hint);
-    }
-    return this;
-  }
-
-  @Override
-  protected void deallocate() {
-    data.release();
-    data = null;
-    if (metadata != null) {
-      metadata.release();
-      metadata = null;
-    }
-    handle.recycle(this);
   }
 
   /**
@@ -178,5 +123,71 @@ public final class ByteBufPayload extends AbstractReferenceCounted implements Pa
     return create(
         payload.sliceData().retain(),
         payload.hasMetadata() ? payload.sliceMetadata().retain() : null);
+  }
+
+  @Override
+  public boolean hasMetadata() {
+    return metadata != null;
+  }
+
+  @Override
+  public ByteBuf sliceMetadata() {
+    return metadata == null ? Unpooled.EMPTY_BUFFER : metadata.slice();
+  }
+
+  @Override
+  public ByteBuf data() {
+    return data;
+  }
+
+  @Override
+  public ByteBuf metadata() {
+    return metadata == null ? Unpooled.EMPTY_BUFFER : metadata;
+  }
+
+  @Override
+  public ByteBuf sliceData() {
+    return data.slice();
+  }
+
+  @Override
+  public ByteBufPayload retain() {
+    super.retain();
+    return this;
+  }
+
+  @Override
+  public ByteBufPayload retain(int increment) {
+    super.retain(increment);
+    return this;
+  }
+
+  @Override
+  public ByteBufPayload touch() {
+    data.touch();
+    if (metadata != null) {
+      metadata.touch();
+    }
+    return this;
+  }
+
+  @Override
+  public ByteBufPayload touch(Object hint) {
+    data.touch(hint);
+    if (metadata != null) {
+      metadata.touch(hint);
+    }
+    return this;
+  }
+
+  @Override
+  protected void deallocate() {
+    data.release();
+    data = null;
+    if (metadata != null) {
+      metadata.release();
+      metadata = null;
+    }
+    handle.recycle(this);
   }
 }

@@ -235,7 +235,6 @@ final class FrameReassembler extends AtomicBoolean implements Disposable {
         case CANCEL:
         case ERROR:
           cancelAssemble(streamId);
-          return;
         default:
       }
 

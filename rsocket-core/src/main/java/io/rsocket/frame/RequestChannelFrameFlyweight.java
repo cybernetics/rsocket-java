@@ -27,8 +27,8 @@ public class RequestChannelFrameFlyweight {
         complete,
         false,
         reqN,
-        payload.sliceMetadata(),
-        payload.sliceData());
+        payload.metadata(),
+        payload.data());
   }
 
   public static ByteBuf encode(

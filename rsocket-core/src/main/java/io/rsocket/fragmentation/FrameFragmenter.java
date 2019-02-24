@@ -92,13 +92,13 @@ final class FrameFragmenter {
       ByteBuf metadata,
       ByteBuf data) {
     // subtract the header bytes
-    int m = mtu - FrameHeaderFlyweight.size();
+    int remaining = mtu - FrameHeaderFlyweight.size();
 
     // substract the initial request n
     switch (frameType) {
       case REQUEST_STREAM:
       case REQUEST_CHANNEL:
-        m -= Integer.BYTES;
+        remaining -= Integer.BYTES;
         break;
       default:
     }
@@ -106,15 +106,15 @@ final class FrameFragmenter {
     ByteBuf metadataFragment = null;
     if (metadata.isReadable()) {
       // subtract the metadata frame length
-      m -= 3;
-      int r = Math.min(m, metadata.readableBytes());
-      m -= r;
+      remaining -= 3;
+      int r = Math.min(remaining, metadata.readableBytes());
+      remaining -= r;
       metadataFragment = metadata.readRetainedSlice(r);
     }
 
     ByteBuf dataFragment = Unpooled.EMPTY_BUFFER;
-    if (m > 0 && data.isReadable()) {
-      int r = Math.min(m, data.readableBytes());
+    if (remaining > 0 && data.isReadable()) {
+      int r = Math.min(remaining, data.readableBytes());
       dataFragment = data.readRetainedSlice(r);
     }
 
@@ -145,13 +145,13 @@ final class FrameFragmenter {
         // Payload and synthetic types
       case PAYLOAD:
         return PayloadFrameFlyweight.encode(
-            allocator, streamId, true, false, false, metadata, data);
+            allocator, streamId, true, false, false, metadataFragment, dataFragment);
       case NEXT:
-        return PayloadFrameFlyweight.encode(allocator, streamId, true, false, true, metadata, data);
+        return PayloadFrameFlyweight.encode(allocator, streamId, true, false, true, metadataFragment, dataFragment);
       case NEXT_COMPLETE:
-        return PayloadFrameFlyweight.encode(allocator, streamId, true, true, true, metadata, data);
+        return PayloadFrameFlyweight.encode(allocator, streamId, true, true, true, metadataFragment, dataFragment);
       case COMPLETE:
-        return PayloadFrameFlyweight.encode(allocator, streamId, true, true, false, metadata, data);
+        return PayloadFrameFlyweight.encode(allocator, streamId, true, true, false, metadataFragment, dataFragment);
       default:
         throw new IllegalStateException("unsupported fragment type");
     }
@@ -160,20 +160,20 @@ final class FrameFragmenter {
   static ByteBuf encodeFollowsFragment(
       ByteBufAllocator allocator, int mtu, int streamId, ByteBuf metadata, ByteBuf data) {
     // subtract the header bytes
-    int m = mtu - FrameHeaderFlyweight.size();
+    int remaining = mtu - FrameHeaderFlyweight.size();
 
     ByteBuf metadataFragment = null;
     if (metadata.isReadable()) {
       // subtract the metadata frame length
-      m -= 3;
-      int r = Math.min(m, metadata.readableBytes());
-      m -= r;
+      remaining -= 3;
+      int r = Math.min(remaining, metadata.readableBytes());
+      remaining -= r;
       metadataFragment = metadata.readRetainedSlice(r);
     }
 
     ByteBuf dataFragment = Unpooled.EMPTY_BUFFER;
-    if (m > 0 && data.isReadable()) {
-      int r = Math.min(m, data.readableBytes());
+    if (remaining > 0 && data.isReadable()) {
+      int r = Math.min(remaining, data.readableBytes());
       dataFragment = data.readRetainedSlice(r);
     }
 

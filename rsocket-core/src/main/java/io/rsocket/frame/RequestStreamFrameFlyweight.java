@@ -21,8 +21,8 @@ public class RequestStreamFrameFlyweight {
         streamId,
         fragmentFollows,
         requestN,
-        payload.sliceMetadata(),
-        payload.sliceData());
+        payload.metadata(),
+        payload.data());
   }
 
   public static ByteBuf encode(
@@ -36,8 +36,8 @@ public class RequestStreamFrameFlyweight {
         streamId,
         fragmentFollows,
         requestN,
-        payload.sliceMetadata(),
-        payload.sliceData());
+        payload.metadata(),
+        payload.data());
   }
 
   public static ByteBuf encode(

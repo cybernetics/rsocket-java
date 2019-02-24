@@ -14,7 +14,7 @@ public class RequestFireAndForgetFrameFlyweight {
       ByteBufAllocator allocator, int streamId, boolean fragmentFollows, Payload payload) {
 
     return FLYWEIGHT.encode(
-        allocator, streamId, fragmentFollows, payload.sliceMetadata(), payload.sliceData());
+        allocator, streamId, fragmentFollows, payload.metadata(), payload.data());
   }
 
   public static ByteBuf encode(

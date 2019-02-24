@@ -19,11 +19,12 @@ package io.rsocket.util;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.rsocket.Payload;
+
+import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import javax.annotation.Nullable;
 
 /**
  * An implementation of {@link Payload}. This implementation is <b>not</b> thread-safe, and hence
@@ -38,66 +39,6 @@ public final class DefaultPayload implements Payload {
   private DefaultPayload(ByteBuffer data, @Nullable ByteBuffer metadata) {
     this.data = data;
     this.metadata = metadata;
-  }
-
-  @Override
-  public boolean hasMetadata() {
-    return metadata != null;
-  }
-
-  @Override
-  public ByteBuf sliceMetadata() {
-    return metadata == null ? Unpooled.EMPTY_BUFFER : Unpooled.wrappedBuffer(metadata);
-  }
-
-  @Override
-  public ByteBuf sliceData() {
-    return Unpooled.wrappedBuffer(data);
-  }
-
-  @Override
-  public ByteBuffer getMetadata() {
-    return metadata == null ? DefaultPayload.EMPTY_BUFFER : metadata.duplicate();
-  }
-
-  @Override
-  public ByteBuffer getData() {
-    return data.duplicate();
-  }
-
-  @Override
-  public int refCnt() {
-    return 1;
-  }
-
-  @Override
-  public DefaultPayload retain() {
-    return this;
-  }
-
-  @Override
-  public DefaultPayload retain(int increment) {
-    return this;
-  }
-
-  @Override
-  public DefaultPayload touch() {
-    return this;
-  }
-
-  @Override
-  public DefaultPayload touch(Object hint) {
-    return this;
-  }
-
-  @Override
-  public boolean release() {
-    return false;
-  }
-
-  @Override
-  public boolean release(int decrement) {
-    return false;
   }
 
   /**
@@ -166,5 +107,75 @@ public final class DefaultPayload implements Payload {
     return create(
         Unpooled.copiedBuffer(payload.sliceData()),
         payload.hasMetadata() ? Unpooled.copiedBuffer(payload.sliceMetadata()) : null);
+  }
+
+  @Override
+  public boolean hasMetadata() {
+    return metadata != null;
+  }
+
+  @Override
+  public ByteBuf sliceMetadata() {
+    return metadata == null ? Unpooled.EMPTY_BUFFER : Unpooled.wrappedBuffer(metadata);
+  }
+
+  @Override
+  public ByteBuf sliceData() {
+    return Unpooled.wrappedBuffer(data);
+  }
+
+  @Override
+  public ByteBuffer getMetadata() {
+    return metadata == null ? DefaultPayload.EMPTY_BUFFER : metadata.duplicate();
+  }
+
+  @Override
+  public ByteBuffer getData() {
+    return data.duplicate();
+  }
+
+  @Override
+  public ByteBuf data() {
+    return sliceData();
+  }
+
+  @Override
+  public ByteBuf metadata() {
+    return sliceMetadata();
+  }
+
+  @Override
+  public int refCnt() {
+    return 1;
+  }
+
+  @Override
+  public DefaultPayload retain() {
+    return this;
+  }
+
+  @Override
+  public DefaultPayload retain(int increment) {
+    return this;
+  }
+
+  @Override
+  public DefaultPayload touch() {
+    return this;
+  }
+
+  @Override
+  public DefaultPayload touch(Object hint) {
+    return this;
+  }
+
+  @Override
+  public boolean release() {
+    return false;
+  }
+
+  @Override
+  public boolean release(int decrement) {
+    return false;
   }
 }
