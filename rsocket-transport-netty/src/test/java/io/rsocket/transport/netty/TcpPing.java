@@ -30,8 +30,8 @@ public final class TcpPing {
   public static void main(String... args) {
     Mono<RSocket> client =
         RSocketFactory.connect()
+            .fragment(512)
             .frameDecoder(PayloadDecoder.ZERO_COPY)
-            .fragment(64)
             .transport(TcpClientTransport.create(7878))
             .start();
 
@@ -39,7 +39,7 @@ public final class TcpPing {
 
     Recorder recorder = pingClient.startTracker(Duration.ofSeconds(1));
 
-    int count = 1_000_000_000;
+    int count = 1_000_000;
 
     pingClient
         .startPingPong(count, recorder)

@@ -18,6 +18,7 @@ package io.rsocket.fragmentation;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 import io.rsocket.frame.*;
@@ -38,10 +39,9 @@ final class FrameFragmenter {
   static Publisher<ByteBuf> fragmentFrame(
       ByteBufAllocator allocator,
       int mtu,
-      ByteBuf frame,
+      final ByteBuf frame,
       FrameType frameType,
       boolean encodeLength) {
-    frame.retain();
     ByteBuf metadata = getMetadata(frame, frameType);
     ByteBuf data = getData(frame, frameType);
     int streamId = FrameHeaderFlyweight.streamId(frame);
@@ -62,21 +62,13 @@ final class FrameFragmenter {
                 byteBuf = encodeFollowsFragment(allocator, mtu, streamId, metadata, data);
               }
 
+              frame.retain();
               sink.next(encode(allocator, byteBuf, encodeLength));
-
               if (!metadata.isReadable() && !data.isReadable()) {
-                try {
-                  sink.complete();
-                } finally {
-                  ReferenceCountUtil.safeRelease(frame);
-                  ReferenceCountUtil.safeRelease(metadata);
-                  ReferenceCountUtil.safeRelease(data);
-                }
+                sink.complete();
               }
             } catch (Throwable t) {
               ReferenceCountUtil.safeRelease(frame);
-              ReferenceCountUtil.safeRelease(metadata);
-              ReferenceCountUtil.safeRelease(data);
               sink.error(t);
             }
           }
@@ -109,13 +101,13 @@ final class FrameFragmenter {
       remaining -= 3;
       int r = Math.min(remaining, metadata.readableBytes());
       remaining -= r;
-      metadataFragment = metadata.readRetainedSlice(r);
+      metadataFragment = metadata.readSlice(r);
     }
 
     ByteBuf dataFragment = Unpooled.EMPTY_BUFFER;
     if (remaining > 0 && data.isReadable()) {
       int r = Math.min(remaining, data.readableBytes());
-      dataFragment = data.readRetainedSlice(r);
+      dataFragment = data.readSlice(r);
     }
 
     switch (frameType) {
@@ -147,11 +139,14 @@ final class FrameFragmenter {
         return PayloadFrameFlyweight.encode(
             allocator, streamId, true, false, false, metadataFragment, dataFragment);
       case NEXT:
-        return PayloadFrameFlyweight.encode(allocator, streamId, true, false, true, metadataFragment, dataFragment);
+        return PayloadFrameFlyweight.encode(
+            allocator, streamId, true, false, true, metadataFragment, dataFragment);
       case NEXT_COMPLETE:
-        return PayloadFrameFlyweight.encode(allocator, streamId, true, true, true, metadataFragment, dataFragment);
+        return PayloadFrameFlyweight.encode(
+            allocator, streamId, true, true, true, metadataFragment, dataFragment);
       case COMPLETE:
-        return PayloadFrameFlyweight.encode(allocator, streamId, true, true, false, metadataFragment, dataFragment);
+        return PayloadFrameFlyweight.encode(
+            allocator, streamId, true, true, false, metadataFragment, dataFragment);
       default:
         throw new IllegalStateException("unsupported fragment type");
     }
@@ -168,13 +163,13 @@ final class FrameFragmenter {
       remaining -= 3;
       int r = Math.min(remaining, metadata.readableBytes());
       remaining -= r;
-      metadataFragment = metadata.readRetainedSlice(r);
+      metadataFragment = metadata.readSlice(r);
     }
 
     ByteBuf dataFragment = Unpooled.EMPTY_BUFFER;
     if (remaining > 0 && data.isReadable()) {
       int r = Math.min(remaining, data.readableBytes());
-      dataFragment = data.readRetainedSlice(r);
+      dataFragment = data.readSlice(r);
     }
 
     boolean follows =
@@ -213,7 +208,7 @@ final class FrameFragmenter {
         default:
           throw new IllegalStateException("unsupported fragment type");
       }
-      return metadata.retain();
+      return metadata;
     } else {
       return Unpooled.EMPTY_BUFFER;
     }
@@ -244,7 +239,7 @@ final class FrameFragmenter {
       default:
         throw new IllegalStateException("unsupported fragment type");
     }
-    return data.retain();
+    return data;
   }
 
   static ByteBuf encode(ByteBufAllocator allocator, ByteBuf frame, boolean encodeLength) {

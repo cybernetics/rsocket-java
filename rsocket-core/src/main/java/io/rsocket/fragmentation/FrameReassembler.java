@@ -155,21 +155,12 @@ final class FrameReassembler extends AtomicBoolean implements Disposable {
     } else {
       sink.next(frame);
     }
-    sink.complete();
   }
 
   void handleFollowsFlag(ByteBuf frame, int streamId, FrameType frameType) {
     ByteBuf header = getHeader(streamId);
     if (header == null) {
-      /*
-      int flags = FrameHeaderFlyweight.flags(frame);
-      header = FrameHeaderFlyweight.encode(allocator, streamId, frameType, flags);
-      if (frameType == FrameType.REQUEST_CHANNEL || frameType == FrameType.REQUEST_STREAM) {
-        int i = RequestChannelFrameFlyweight.initialRequestN(frame);
-        header.writeInt(i);
-      }*/
       header = frame.copy(frame.readerIndex(), FrameHeaderFlyweight.size());
-      //header = allocator.buffer().writeBytes(frame.slice(frame.readerIndex(), FrameHeaderFlyweight.size()));
       
       if (frameType == FrameType.REQUEST_CHANNEL || frameType == FrameType.REQUEST_STREAM) {
         int i = RequestChannelFrameFlyweight.initialRequestN(frame);
