@@ -18,7 +18,6 @@ package io.rsocket.fragmentation;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 import io.rsocket.frame.*;
@@ -51,28 +50,22 @@ final class FrameFragmenter {
 
           @Override
           public void accept(SynchronousSink<ByteBuf> sink) {
-            try {
-              ByteBuf byteBuf;
-              if (first) {
-                first = false;
-                byteBuf =
-                    encodeFirstFragment(allocator, mtu, frame, frameType, streamId, metadata, data);
+            ByteBuf byteBuf;
+            if (first) {
+              first = false;
+              byteBuf = encodeFirstFragment(allocator, mtu, frame, frameType, streamId, metadata, data);
+            } else {
+              byteBuf = encodeFollowsFragment(allocator, mtu, streamId, metadata, data);
+            }
 
-              } else {
-                byteBuf = encodeFollowsFragment(allocator, mtu, streamId, metadata, data);
-              }
-
-              frame.retain();
-              sink.next(encode(allocator, byteBuf, encodeLength));
-              if (!metadata.isReadable() && !data.isReadable()) {
-                sink.complete();
-              }
-            } catch (Throwable t) {
-              ReferenceCountUtil.safeRelease(frame);
-              sink.error(t);
+            sink.next(encode(allocator, byteBuf, encodeLength));
+            if (!metadata.isReadable() && !data.isReadable()) {
+              sink.complete();
             }
           }
-        });
+        }).doFinally(signalType ->
+          ReferenceCountUtil.safeRelease(frame)
+        );
   }
 
   static ByteBuf encodeFirstFragment(
@@ -101,13 +94,13 @@ final class FrameFragmenter {
       remaining -= 3;
       int r = Math.min(remaining, metadata.readableBytes());
       remaining -= r;
-      metadataFragment = metadata.readSlice(r);
+      metadataFragment = metadata.readRetainedSlice(r);
     }
 
     ByteBuf dataFragment = Unpooled.EMPTY_BUFFER;
     if (remaining > 0 && data.isReadable()) {
       int r = Math.min(remaining, data.readableBytes());
-      dataFragment = data.readSlice(r);
+      dataFragment = data.readRetainedSlice(r);
     }
 
     switch (frameType) {
@@ -163,13 +156,13 @@ final class FrameFragmenter {
       remaining -= 3;
       int r = Math.min(remaining, metadata.readableBytes());
       remaining -= r;
-      metadataFragment = metadata.readSlice(r);
+      metadataFragment = metadata.readRetainedSlice(r);
     }
 
     ByteBuf dataFragment = Unpooled.EMPTY_BUFFER;
     if (remaining > 0 && data.isReadable()) {
       int r = Math.min(remaining, data.readableBytes());
-      dataFragment = data.readSlice(r);
+      dataFragment = data.readRetainedSlice(r);
     }
 
     boolean follows =
