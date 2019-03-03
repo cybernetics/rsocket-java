@@ -142,8 +142,8 @@ public class SetupFrameFlyweight {
   public static String metadataMimeType(ByteBuf byteBuf) {
     int skip = bytesToSkipToMimeType(byteBuf);
     byteBuf.markReaderIndex();
-    int length = byteBuf.skipBytes(skip).readByte();
-    String mimeType = byteBuf.readSlice(length).toString(StandardCharsets.UTF_8);
+    int length = byteBuf.skipBytes(skip).readUnsignedByte();
+    String mimeType = byteBuf.slice(byteBuf.readerIndex(), length).toString(StandardCharsets.UTF_8);
     byteBuf.resetReaderIndex();
     return mimeType;
   }

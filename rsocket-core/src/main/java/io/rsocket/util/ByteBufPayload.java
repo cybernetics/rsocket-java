@@ -21,29 +21,18 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import io.netty.util.AbstractReferenceCounted;
-import io.netty.util.Recycler;
-import io.netty.util.Recycler.Handle;
 import io.rsocket.Payload;
+
+import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
-import javax.annotation.Nullable;
 
 public final class ByteBufPayload extends AbstractReferenceCounted implements Payload {
-  private static final Recycler<ByteBufPayload> RECYCLER =
-      new Recycler<ByteBufPayload>() {
-        protected ByteBufPayload newObject(Handle<ByteBufPayload> handle) {
-          return new ByteBufPayload(handle);
-        }
-      };
-
-  private final Handle<ByteBufPayload> handle;
   private ByteBuf data;
   private ByteBuf metadata;
 
-  private ByteBufPayload(final Handle<ByteBufPayload> handle) {
-    this.handle = handle;
-  }
+  private ByteBufPayload() {}
 
   /**
    * Static factory method for a text payload. Mainly looks better than "new ByteBufPayload(data)"
@@ -111,7 +100,7 @@ public final class ByteBufPayload extends AbstractReferenceCounted implements Pa
   }
 
   public static Payload create(ByteBuf data, @Nullable ByteBuf metadata) {
-    ByteBufPayload payload = RECYCLER.get();
+    ByteBufPayload payload = new ByteBufPayload();
     payload.setRefCnt(1);
     payload.data = data;
     payload.metadata = metadata;
@@ -187,6 +176,5 @@ public final class ByteBufPayload extends AbstractReferenceCounted implements Pa
       metadata.release();
       metadata = null;
     }
-    handle.recycle(this);
   }
 }

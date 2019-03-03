@@ -28,6 +28,10 @@ class SetupFrameFlyweightTest {
             data);
 
     assertEquals(FrameType.SETUP, FrameHeaderFlyweight.frameType(frame));
+  
+    int aChar = frame.getUnsignedByte(19);
+    System.out.println(aChar);
+
     assertEquals("metadata_type", SetupFrameFlyweight.metadataMimeType(frame));
     assertEquals("data_type", SetupFrameFlyweight.dataMimeType(frame));
     assertEquals(metadata, SetupFrameFlyweight.metadata(frame));

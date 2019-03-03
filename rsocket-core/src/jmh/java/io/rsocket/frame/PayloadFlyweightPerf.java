@@ -8,8 +8,13 @@ import org.openjdk.jmh.infra.Blackhole;
 
 @BenchmarkMode(Mode.Throughput)
 @Fork(
-    value = 1 // , jvmArgsAppend = {"-Dio.netty.leakDetection.level=advanced"}
-    )
+    value = 1,
+    jvmArgsAppend = {
+      "-Dio.netty.allocator.directMemoryCacheAlignment=64",
+      "-Dio.netty.buffer.checkBounds=false",
+      "-Dio.netty.buffer.checkAccessible=false",
+      "-Dio.netty.leakDetectionLevel=disabled"
+    })
 @Warmup(iterations = 10)
 @Measurement(iterations = 10)
 @State(Scope.Thread)

@@ -3,6 +3,8 @@ package io.rsocket.frame;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
+import io.rsocket.buffer.Tuple2ByteBuf;
+import io.rsocket.buffer.Tuple3ByteBuf;
 
 class DataAndMetadataFlyweight {
   public static final int FRAME_LENGTH_MASK = 0xFFFFFF;
@@ -32,11 +34,13 @@ class DataAndMetadataFlyweight {
 
   static ByteBuf encodeOnlyMetadata(
       ByteBufAllocator allocator, final ByteBuf header, ByteBuf metadata) {
-    return allocator.compositeBuffer(2).addComponents(true, header, metadata);
+    // return allocator.compositeBuffer(2).addComponents(true, header, metadata);
+    return Tuple2ByteBuf.create(allocator, header, metadata);
   }
 
   static ByteBuf encodeOnlyData(ByteBufAllocator allocator, final ByteBuf header, ByteBuf data) {
-    return allocator.compositeBuffer(2).addComponents(true, header, data);
+    // return allocator.compositeBuffer(2).addComponents(true, header, data);
+    return Tuple2ByteBuf.create(allocator, header, data);
   }
 
   static ByteBuf encode(
@@ -45,7 +49,8 @@ class DataAndMetadataFlyweight {
     int length = metadata.readableBytes();
     encodeLength(header, length);
 
-    return allocator.compositeBuffer(3).addComponents(true, header, metadata, data);
+   //  return allocator.compositeBuffer(3).addComponents(true, header, metadata, data);
+    return Tuple3ByteBuf.create(allocator, header, metadata, data);
   }
 
   static ByteBuf metadataWithoutMarking(ByteBuf byteBuf, boolean hasMetadata) {
@@ -59,6 +64,7 @@ class DataAndMetadataFlyweight {
 
   static ByteBuf metadata(ByteBuf byteBuf, boolean hasMetadata) {
     byteBuf.markReaderIndex();
+    byteBuf.skipBytes(6);
     ByteBuf metadata = metadataWithoutMarking(byteBuf, hasMetadata);
     byteBuf.resetReaderIndex();
     return metadata;
@@ -71,7 +77,7 @@ class DataAndMetadataFlyweight {
       byteBuf.skipBytes(length);
     }
     if (byteBuf.readableBytes() > 0) {
-      return byteBuf.slice();
+      return byteBuf.readSlice(byteBuf.readableBytes());
     } else {
       return Unpooled.EMPTY_BUFFER;
     }
@@ -79,6 +85,7 @@ class DataAndMetadataFlyweight {
 
   static ByteBuf data(ByteBuf byteBuf, boolean hasMetadata) {
     byteBuf.markReaderIndex();
+    byteBuf.skipBytes(6);
     ByteBuf data = dataWithoutMarking(byteBuf, hasMetadata);
     byteBuf.resetReaderIndex();
     return data;
