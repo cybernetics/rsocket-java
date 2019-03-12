@@ -5,8 +5,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
-import org.agrona.BufferUtil;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -17,6 +15,7 @@ import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.ScatteringByteChannel;
 import java.nio.charset.Charset;
 import java.util.Objects;
+import org.agrona.BufferUtil;
 
 public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
   private static final int MEMORY_CACHE_ALIGNMENT = 64;
@@ -861,7 +860,7 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
               "readerIndex(%d) + length(%d) exceeds writerIndex(%d): %s",
               readIndex, length, capacity, this));
     }
-    
+
     if (readIndex == 0 && length == capacity) {
       return Tuple2ByteBuf.create(
           allocator,

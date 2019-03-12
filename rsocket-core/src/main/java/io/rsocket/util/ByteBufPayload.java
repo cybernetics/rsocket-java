@@ -22,11 +22,10 @@ import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
 import io.netty.util.AbstractReferenceCounted;
 import io.rsocket.Payload;
-
-import javax.annotation.Nullable;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
+import javax.annotation.Nullable;
 
 public final class ByteBufPayload extends AbstractReferenceCounted implements Payload {
   private ByteBuf data;

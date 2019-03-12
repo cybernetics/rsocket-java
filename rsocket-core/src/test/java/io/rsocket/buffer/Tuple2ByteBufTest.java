@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 class Tuple2ByteBufTest {
   ByteBufAllocator allocator = ByteBufAllocator.DEFAULT;
+
   @Test
   public void test() {
     ByteBuf one = ByteBufUtil.writeUtf8(allocator, "_string one_");

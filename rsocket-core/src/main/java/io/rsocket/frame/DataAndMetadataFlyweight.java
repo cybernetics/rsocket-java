@@ -49,7 +49,7 @@ class DataAndMetadataFlyweight {
     int length = metadata.readableBytes();
     encodeLength(header, length);
 
-   //  return allocator.compositeBuffer(3).addComponents(true, header, metadata, data);
+    //  return allocator.compositeBuffer(3).addComponents(true, header, metadata, data);
     return Tuple3ByteBuf.create(allocator, header, metadata, data);
   }
 

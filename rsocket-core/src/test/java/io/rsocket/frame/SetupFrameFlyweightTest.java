@@ -28,7 +28,7 @@ class SetupFrameFlyweightTest {
             data);
 
     assertEquals(FrameType.SETUP, FrameHeaderFlyweight.frameType(frame));
-  
+
     int aChar = frame.getUnsignedByte(19);
     System.out.println(aChar);
 

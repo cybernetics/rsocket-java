@@ -1,4 +1,3 @@
 package io.rsocket.buffer;
 
-class Tuple3ByteBufTest {
-}
+class Tuple3ByteBufTest {}

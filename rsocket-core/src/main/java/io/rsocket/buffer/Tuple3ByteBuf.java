@@ -4,8 +4,6 @@ import io.netty.buffer.AbstractReferenceCountedByteBuf;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
-import org.agrona.BufferUtil;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -16,6 +14,7 @@ import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.ScatteringByteChannel;
 import java.nio.charset.Charset;
 import java.util.Objects;
+import org.agrona.BufferUtil;
 
 public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
   private static final int MEMORY_CACHE_ALIGNMENT = 64;
