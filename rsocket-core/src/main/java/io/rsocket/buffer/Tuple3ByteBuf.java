@@ -766,10 +766,12 @@ public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
         {
           int l = Math.min(oneReadableBytes, length);
           one.getBytes(index, dst, dstIndex, l);
+          length -= l;
 
           if (oneReadableBytes - l != 0) {
             l = Math.min(twoReadableBytes, length);
             two.getBytes(twoReadIndex, dst, dstIndex, l);
+            length -= l;
 
             if (twoReadableBytes - l != 0) {
               l = Math.min(threeReadableBytes, length);
@@ -782,6 +784,7 @@ public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
         {
           int l = Math.min(twoReadableBytes, length);
           two.getBytes(index, dst, dstIndex, l);
+          length -= l;
 
           if (twoReadableBytes - l != 0) {
             l = Math.min(threeReadableBytes, length);
@@ -817,7 +820,7 @@ public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
   }
 
   @Override
-  public ByteBuf getBytes(int index, final OutputStream out, final int length) throws IOException {
+  public ByteBuf getBytes(int index, final OutputStream out, int length) throws IOException {
     long ri = calculateRelativeIndex(index);
     index = (int) (ri & Integer.MAX_VALUE);
     switch ((int) ((ri & MASK) >>> 32L)) {
@@ -825,10 +828,12 @@ public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
         {
           int l = Math.min(oneReadableBytes, length);
           one.getBytes(index, out, l);
+          length -= l;
 
           if (oneReadableBytes - l != 0) {
             l = Math.min(twoReadableBytes, length);
             two.getBytes(twoReadIndex, out, l);
+            length -= l;
 
             if (twoReadableBytes - l != 0) {
               l = Math.min(threeReadableBytes, length);
@@ -841,6 +846,7 @@ public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
         {
           int l = Math.min(twoReadableBytes, length);
           two.getBytes(index, out, l);
+          length -= l;
 
           if (twoReadableBytes - l != 0) {
             l = Math.min(threeReadableBytes, length);
@@ -872,10 +878,12 @@ public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
         {
           int l = Math.min(oneReadableBytes, length);
           read += one.getBytes(index, out, l);
+          length -= l;
 
           if (oneReadableBytes - l != 0) {
             l = Math.min(twoReadableBytes, length);
             read += two.getBytes(twoReadIndex, out, l);
+            length -= l;
 
             if (twoReadableBytes - l != 0) {
               l = Math.min(threeReadableBytes, length);
@@ -888,6 +896,7 @@ public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
         {
           int l = Math.min(twoReadableBytes, length);
           read += two.getBytes(index, out, l);
+          length -= l;
 
           if (twoReadableBytes - l != 0) {
             l = Math.min(threeReadableBytes, length);
@@ -919,10 +928,12 @@ public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
         {
           int l = Math.min(oneReadableBytes, length);
           read += one.getBytes(index, out, position, l);
+          length -= l;
 
           if (oneReadableBytes - l != 0) {
             l = Math.min(twoReadableBytes, length);
             read += two.getBytes(twoReadIndex, out, position, l);
+            length -= l;
 
             if (twoReadableBytes - l != 0) {
               l = Math.min(threeReadableBytes, length);
@@ -935,6 +946,7 @@ public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
         {
           int l = Math.min(twoReadableBytes, length);
           read += two.getBytes(index, out, position, l);
+          length -= l;
 
           if (twoReadableBytes - l != 0) {
             l = Math.min(threeReadableBytes, length);
@@ -965,6 +977,76 @@ public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
     buffer.setBytes(threeReadIndex, three);
 
     return buffer;
+  }
+
+  @Override
+  public ByteBuf slice(final int readIndex, int length) {
+    if (length + readIndex > capacity) {
+      throw new IndexOutOfBoundsException(
+          String.format(
+              "readerIndex(%d) + length(%d) exceeds writerIndex(%d): %s",
+              readIndex, length, capacity, this));
+    }
+
+    if (readIndex == 0 && length == capacity) {
+      return Tuple3ByteBuf.create(
+          allocator,
+          one.slice(oneReadIndex, oneReadableBytes),
+          two.slice(twoReadIndex, twoReadableBytes),
+          three.slice(threeReadIndex, threeReadableBytes));
+    }
+
+    long ri = calculateRelativeIndex(readIndex);
+    int index = (int) (ri & Integer.MAX_VALUE);
+    switch ((int) ((ri & MASK) >>> 32L)) {
+      case 0x1:
+        {
+          ByteBuf oneSlice;
+          ByteBuf twoSlice;
+          ByteBuf threeSlice;
+
+          int l = Math.min(oneReadableBytes - index, length);
+
+          if (length > oneReadableBytes - index) {
+            oneSlice = one;
+            length -= l;
+            l = Math.min(twoReadableBytes, length);
+            if (length > twoReadableBytes) {
+              twoSlice = two;
+              l = length - l;
+              threeSlice = three.slice(threeReadIndex, l);
+              return Tuple3ByteBuf.create(allocator, oneSlice, twoSlice, threeSlice);
+            } else {
+              twoSlice = two.slice(twoReadIndex, l);
+              return Tuple2ByteBuf.create(allocator, oneSlice, twoSlice);
+            }
+
+          } else {
+            return one.slice(index, l);
+          }
+        }
+      case 0x2:
+        {
+          ByteBuf twoSlice;
+          ByteBuf threeSlice;
+
+          int l = Math.min(twoReadableBytes, length);
+          if (length > twoReadableBytes) {
+            twoSlice = two;
+            l = length - l;
+            threeSlice = three.slice(threeReadIndex, l);
+            return Tuple2ByteBuf.create(allocator, twoSlice, threeSlice);
+          } else {
+            return two.slice(twoReadIndex, l);
+          }
+        }
+      case 0x4:
+        {
+          return three.slice(index, length);
+        }
+      default:
+        throw new IllegalStateException();
+    }
   }
 
   @Override

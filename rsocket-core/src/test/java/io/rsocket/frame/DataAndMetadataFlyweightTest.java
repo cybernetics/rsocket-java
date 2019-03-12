@@ -36,7 +36,7 @@ class DataAndMetadataFlyweightTest {
     FrameType frameType = FrameHeaderFlyweight.frameType(frame);
     System.out.println(frameType);
     
-    for (int i = 0;  i< 10_000_000;i++) {
+    for (int i = 0;  i< 100_000;i++) {
       ByteBuf d1 = ByteBufUtil.writeUtf8(ByteBufAllocator.DEFAULT, "_I'm data_");
       ByteBuf m1 = ByteBufUtil.writeUtf8(ByteBufAllocator.DEFAULT, "_I'm metadata_");
       ByteBuf h1 = FrameHeaderFlyweight.encode(ByteBufAllocator.DEFAULT, 1, FrameType.REQUEST_RESPONSE, 0);

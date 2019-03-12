@@ -16,7 +16,7 @@ class Tuple2ByteBufTest {
     System.out.println(s);
     short unsignedByte = byteBuf.getUnsignedByte(12);
     System.out.println(unsignedByte);
-    ByteBuf slice = byteBuf.slice(12, 12);
+    ByteBuf slice = byteBuf.slice(8, 12);
     String prettyHexDump = ByteBufUtil.prettyHexDump(slice);
     System.out.println(prettyHexDump);
   }

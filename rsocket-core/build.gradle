@@ -30,7 +30,9 @@ dependencies {
     implementation 'org.slf4j:slf4j-api'
 
     compileOnly 'com.google.code.findbugs:jsr305'
-
+    
+    implementation 'org.agrona:agrona:0.9.33'
+    
     testImplementation 'io.projectreactor:reactor-test'
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.junit.jupiter:junit-jupiter-api'

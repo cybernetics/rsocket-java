@@ -63,7 +63,7 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
     this.twoRelativeIndex = oneReadableBytes;
 
     this.capacity = oneReadableBytes + twoReadableBytes;
-    
+
     super.writerIndex(capacity);
   }
 
@@ -752,7 +752,7 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
   }
 
   @Override
-  public ByteBuf getBytes(int index, final OutputStream out, final int length) throws IOException {
+  public ByteBuf getBytes(int index, final OutputStream out, int length) throws IOException {
     long ri = calculateRelativeIndex(index);
     index = (int) (ri & Integer.MAX_VALUE);
     switch ((int) ((ri & MASK) >>> 32L)) {
@@ -760,6 +760,7 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
         {
           int l = Math.min(oneReadableBytes, length);
           one.getBytes(index, out, l);
+          length -= l;
 
           if (oneReadableBytes - l != 0) {
             l = Math.min(twoReadableBytes, length);
@@ -790,6 +791,7 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
         {
           int l = Math.min(oneReadableBytes, length);
           read += one.getBytes(index, out, l);
+          length -= l;
 
           if (oneReadableBytes - l != 0) {
             l = Math.min(twoReadableBytes, length);
@@ -820,6 +822,7 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
         {
           int l = Math.min(oneReadableBytes, length);
           read += one.getBytes(index, out, position, l);
+          length -= l;
 
           if (oneReadableBytes - l != 0) {
             l = Math.min(twoReadableBytes, length);
@@ -849,19 +852,74 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
 
     return buffer;
   }
-  
+
+  @Override
+  public ByteBuf slice(final int readIndex, int length) {
+    if (length + readIndex > capacity) {
+      throw new IndexOutOfBoundsException(
+          String.format(
+              "readerIndex(%d) + length(%d) exceeds writerIndex(%d): %s",
+              readIndex, length, capacity, this));
+    }
+    
+    if (readIndex == 0 && length == capacity) {
+      return Tuple2ByteBuf.create(
+          allocator,
+          one.slice(oneReadIndex, oneReadableBytes),
+          two.slice(twoReadIndex, twoReadableBytes));
+    }
+
+    long ri = calculateRelativeIndex(readIndex);
+    int index = (int) (ri & Integer.MAX_VALUE);
+
+    switch ((int) ((ri & MASK) >>> 32L)) {
+      case 0x1:
+        {
+          ByteBuf oneSlice;
+          ByteBuf twoSlice;
+
+          int l = Math.min(oneReadableBytes - index, length);
+
+          if (length > oneReadableBytes - index) {
+            oneSlice = one;
+            length -= l;
+            l = Math.min(twoReadableBytes, length);
+            twoSlice = two.slice(twoReadIndex, l);
+            return Tuple2ByteBuf.create(allocator, oneSlice, twoSlice);
+          } else {
+            return one.slice(index, l);
+          }
+        }
+      case 0x2:
+        {
+          return two.slice(index, length);
+        }
+      default:
+        throw new IllegalStateException();
+    }
+  }
+
   @Override
   public String toString() {
-    return "Tuple2ByteBuf{" +
-             "capacity=" + capacity +
-             ", one=" + one +
-             ", two=" + two +
-             ", allocator=" + allocator +
-             ", oneReadIndex=" + oneReadIndex +
-             ", twoReadIndex=" + twoReadIndex +
-             ", oneReadableBytes=" + oneReadableBytes +
-             ", twoReadableBytes=" + twoReadableBytes +
-             ", twoRelativeIndex=" + twoRelativeIndex +
-             '}';
+    return "Tuple2ByteBuf{"
+        + "capacity="
+        + capacity
+        + ", one="
+        + one
+        + ", two="
+        + two
+        + ", allocator="
+        + allocator
+        + ", oneReadIndex="
+        + oneReadIndex
+        + ", twoReadIndex="
+        + twoReadIndex
+        + ", oneReadableBytes="
+        + oneReadableBytes
+        + ", twoReadableBytes="
+        + twoReadableBytes
+        + ", twoRelativeIndex="
+        + twoRelativeIndex
+        + '}';
   }
 }
