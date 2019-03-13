@@ -21,9 +21,10 @@ import io.rsocket.RSocketFactory;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.test.PingClient;
 import io.rsocket.test.PingHandler;
-import java.time.Duration;
 import org.HdrHistogram.Recorder;
 import reactor.core.publisher.Mono;
+
+import java.time.Duration;
 
 public final class LocalPingPong {
 
@@ -38,6 +39,7 @@ public final class LocalPingPong {
     Mono<RSocket> client =
         RSocketFactory.connect()
             .frameDecoder(PayloadDecoder.ZERO_COPY)
+            .keepAlive(Duration.ZERO, Duration.ZERO, 0)
             .transport(LocalClientTransport.create("test-local-server"))
             .start();
 

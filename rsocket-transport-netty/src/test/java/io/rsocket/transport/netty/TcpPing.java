@@ -21,9 +21,10 @@ import io.rsocket.RSocketFactory;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.test.PingClient;
 import io.rsocket.transport.netty.client.TcpClientTransport;
-import java.time.Duration;
 import org.HdrHistogram.Recorder;
 import reactor.core.publisher.Mono;
+
+import java.time.Duration;
 
 public final class TcpPing {
 
@@ -31,6 +32,7 @@ public final class TcpPing {
     Mono<RSocket> client =
         RSocketFactory.connect()
             .frameDecoder(PayloadDecoder.ZERO_COPY)
+          .keepAlive(Duration.ZERO, Duration.ZERO, 0)
             .errorConsumer(Throwable::printStackTrace)
             .transport(TcpClientTransport.create(7878))
             .start();

@@ -159,38 +159,13 @@ public class Tuple3ByteBuf extends AbstractReferenceCountedByteBuf {
   }
 
   @Override
-  public int writerIndex() {
+  public final int writerIndex() {
     return capacity;
   }
 
   @Override
   public ByteBuf writerIndex(int writerIndex) {
     return this;
-  }
-
-  @Override
-  public ByteBuf setIndex(int readerIndex, int writerIndex) {
-    return this;
-  }
-
-  @Override
-  public int writableBytes() {
-    return 0;
-  }
-
-  @Override
-  public int maxWritableBytes() {
-    return 0;
-  }
-
-  @Override
-  public boolean isWritable() {
-    return false;
-  }
-
-  @Override
-  public boolean isWritable(int size) {
-    return false;
   }
 
   @Override

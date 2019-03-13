@@ -143,7 +143,7 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
   }
 
   @Override
-  public int writerIndex() {
+  public final int writerIndex() {
     return capacity;
   }
 
@@ -155,16 +155,6 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
   @Override
   public ByteBuf setIndex(int readerIndex, int writerIndex) {
     return this;
-  }
-
-  @Override
-  public int writableBytes() {
-    return 0;
-  }
-
-  @Override
-  public int maxWritableBytes() {
-    return 0;
   }
 
   @Override

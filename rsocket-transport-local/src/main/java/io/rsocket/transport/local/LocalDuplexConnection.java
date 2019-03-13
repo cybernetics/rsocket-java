@@ -76,7 +76,7 @@ final class LocalDuplexConnection implements DuplexConnection {
     return Flux.from(frames)
         .doOnNext(
             byteBuf -> {
-              byteBuf.retain();
+              //byteBuf.retain();
               out.onNext(byteBuf);
             })
         .then();

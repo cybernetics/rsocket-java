@@ -46,7 +46,8 @@ public class PingHandler implements SocketAcceptor {
           @Override
           public Mono<Payload> requestResponse(Payload payload) {
             payload.release();
-            return Mono.just(pong.retain());
+            return Mono.create(s -> s.success(pong.retain()));
+            //return Mono.just(pong.retain());
           }
         });
   }
