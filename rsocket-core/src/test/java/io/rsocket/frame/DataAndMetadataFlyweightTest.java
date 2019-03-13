@@ -38,15 +38,17 @@ class DataAndMetadataFlyweightTest {
     System.out.println(s);
     FrameType frameType = FrameHeaderFlyweight.frameType(frame);
     System.out.println(frameType);
-
-    for (int i = 0; i < 100_000; i++) {
+    
+    frame.release();
+    
+    for (int i = 0; i < 10_000_000; i++) {
       ByteBuf d1 = ByteBufUtil.writeUtf8(ByteBufAllocator.DEFAULT, "_I'm data_");
       ByteBuf m1 = ByteBufUtil.writeUtf8(ByteBufAllocator.DEFAULT, "_I'm metadata_");
       ByteBuf h1 =
           FrameHeaderFlyweight.encode(ByteBufAllocator.DEFAULT, 1, FrameType.REQUEST_RESPONSE, 0);
       ByteBuf f1 =
           DataAndMetadataFlyweight.encode(
-              ByteBufAllocator.DEFAULT, h1.retain(), m1.retain(), d1.retain());
+              ByteBufAllocator.DEFAULT, h1, m1, d1);
       f1.release();
     }
   }

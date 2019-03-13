@@ -24,9 +24,9 @@
     </appender>
 
     <logger name="io.rsocket.transport.netty" level="INFO"/>
-    <logger name="io.rsocket.FrameLogger" level="INFO"/>
+    <logger name="io.rsocket.FrameLogger" level="DEBUG"/>
 
-    <root level="INFO">
+    <root level="TRACE">
         <appender-ref ref="STDOUT"/>
     </root>
 

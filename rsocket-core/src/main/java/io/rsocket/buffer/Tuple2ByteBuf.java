@@ -5,6 +5,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
+import org.agrona.BufferUtil;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -15,7 +17,6 @@ import java.nio.channels.GatheringByteChannel;
 import java.nio.channels.ScatteringByteChannel;
 import java.nio.charset.Charset;
 import java.util.Objects;
-import org.agrona.BufferUtil;
 
 public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
   private static final int MEMORY_CACHE_ALIGNMENT = 64;
@@ -24,6 +25,7 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
   private static final long TWO_MASK = 0x200000000L;
   private static final long MASK = 0x700000000L;
   private static final boolean CHECK_BOUNDS = true;
+  private static final ByteBuffer EMPTY_NIO_BUFFER = Unpooled.EMPTY_BUFFER.nioBuffer();
   private int capacity;
   private ByteBuf one;
   private ByteBuf two;
@@ -482,24 +484,34 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
   }
 
   @Override
-  public ByteBuffer[] nioBuffers() {
-    ByteBuffer[] oneBuffers = one.nioBuffers();
-    ByteBuffer[] twoBuffers = two.nioBuffers();
-
-    int oneLength = oneBuffers.length;
-    int twoLength = twoBuffers.length;
-
-    ByteBuffer[] buffers = new ByteBuffer[+twoBuffers.length];
-
-    System.arraycopy(oneBuffers, 0, buffers, 0, oneLength);
-    System.arraycopy(twoBuffers, 0, buffers, oneLength, twoLength);
-
-    return buffers;
-  }
-
-  @Override
   public ByteBuffer[] nioBuffers(int index, int length) {
-    return new ByteBuffer[0];
+    if (length == 0) {
+      return new ByteBuffer[] {EMPTY_NIO_BUFFER};
+    }
+
+    long ri = calculateRelativeIndex(index);
+    index = (int) (ri & Integer.MAX_VALUE);
+    switch ((int) ((ri & MASK) >>> 32L)) {
+      case 0x1:
+        ByteBuffer[] oneBuffer;
+        ByteBuffer[] twoBuffer;
+        int l = Math.min(oneReadableBytes - index, length);
+        oneBuffer = one.nioBuffers(index, l);
+        length -= l;
+        if (length != 0) {
+          twoBuffer = two.nioBuffers(twoReadIndex, length);
+          ByteBuffer[] results = new ByteBuffer[oneBuffer.length + twoBuffer.length];
+          System.arraycopy(oneBuffer, 0, results, 0, oneBuffer.length);
+          System.arraycopy(twoBuffer, 0, results, oneBuffer.length, twoBuffer.length);
+          return results;
+        } else {
+          return oneBuffer;
+        }
+      case 0x2:
+        return two.nioBuffers(index, length);
+      default:
+        throw new IllegalStateException();
+    }
   }
 
   @Override
@@ -714,12 +726,11 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
     switch ((int) ((ri & MASK) >>> 32L)) {
       case 0x1:
         {
-          int l = Math.min(oneReadableBytes, length);
+          int l = Math.min(oneReadableBytes - index, length);
           one.getBytes(index, dst, dstIndex, l);
-
-          if (oneReadableBytes - l != 0) {
-            l = Math.min(twoReadableBytes, length);
-            two.getBytes(twoReadIndex, dst, dstIndex, l);
+          length -= l;
+          if (length != 0) {
+            two.getBytes(twoReadIndex, dst, dstIndex, length);
           }
           break;
         }
@@ -757,20 +768,17 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
     switch ((int) ((ri & MASK) >>> 32L)) {
       case 0x1:
         {
-          int l = Math.min(oneReadableBytes, length);
+          int l = Math.min(oneReadableBytes - index, length);
           one.getBytes(index, out, l);
           length -= l;
-
-          if (oneReadableBytes - l != 0) {
-            l = Math.min(twoReadableBytes, length);
-            two.getBytes(twoReadIndex, out, l);
+          if (length != 0) {
+            two.getBytes(twoReadIndex, out, length);
           }
           break;
         }
       case 0x2:
         {
-          int l = Math.min(twoReadableBytes, length);
-          two.getBytes(index, out, l);
+          two.getBytes(index, out, length);
           break;
         }
       default:
@@ -788,20 +796,17 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
     switch ((int) ((ri & MASK) >>> 32L)) {
       case 0x1:
         {
-          int l = Math.min(oneReadableBytes, length);
+          int l = Math.min(oneReadableBytes - index, length);
           read += one.getBytes(index, out, l);
           length -= l;
-
-          if (oneReadableBytes - l != 0) {
-            l = Math.min(twoReadableBytes, length);
-            read += two.getBytes(twoReadIndex, out, l);
+          if (length != 0) {
+            read += two.getBytes(twoReadIndex, out, length);
           }
           break;
         }
       case 0x2:
         {
-          int l = Math.min(twoReadableBytes, length);
-          read += two.getBytes(index, out, l);
+          read += two.getBytes(index, out, length);
           break;
         }
       default:
@@ -822,17 +827,14 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
           int l = Math.min(oneReadableBytes, length);
           read += one.getBytes(index, out, position, l);
           length -= l;
-
-          if (oneReadableBytes - l != 0) {
-            l = Math.min(twoReadableBytes, length);
-            read += two.getBytes(twoReadIndex, out, position, l);
+          if (length != 0) {
+            read += two.getBytes(twoReadIndex, out, position, length);
           }
           break;
         }
       case 0x2:
         {
-          int l = Math.min(twoReadableBytes, length);
-          read += two.getBytes(index, out, position, l);
+          read += two.getBytes(index, out, position, length);
           break;
         }
       default:
@@ -878,15 +880,13 @@ public class Tuple2ByteBuf extends AbstractReferenceCountedByteBuf {
           ByteBuf twoSlice;
 
           int l = Math.min(oneReadableBytes - index, length);
-
-          if (length > oneReadableBytes - index) {
-            oneSlice = one;
-            length -= l;
-            l = Math.min(twoReadableBytes, length);
-            twoSlice = two.slice(twoReadIndex, l);
+          oneSlice = one.slice(index, l);
+          length -= l;
+          if (length != 0) {
+            twoSlice = two.slice(twoReadIndex, length);
             return Tuple2ByteBuf.create(allocator, oneSlice, twoSlice);
           } else {
-            return one.slice(index, l);
+            return oneSlice;
           }
         }
       case 0x2:

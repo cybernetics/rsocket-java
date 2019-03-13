@@ -258,7 +258,9 @@ public class RSocketFactory {
                           payloadDecoder,
                           errorConsumer);
 
-                  return connection.sendOne(setupFrame).thenReturn(wrappedRSocketClient);
+                  return connection
+                      .sendOne(setupFrame)
+                      .thenReturn(wrappedRSocketClient);
                 });
       }
     }

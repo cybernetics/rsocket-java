@@ -6,11 +6,6 @@ import io.netty.channel.ChannelPromise;
 import io.netty.channel.EventLoop;
 import io.netty.util.ReferenceCountUtil;
 import io.netty.util.ReferenceCounted;
-import java.util.Queue;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -20,8 +15,13 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Operators;
 import reactor.util.concurrent.Queues;
 
-class SendPublisher<V extends ReferenceCounted> extends Flux<ByteBuf> {
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Function;
 
+class SendPublisher<V extends ReferenceCounted> extends Flux<ByteBuf> {
   private static final AtomicIntegerFieldUpdater<SendPublisher> WIP =
       AtomicIntegerFieldUpdater.newUpdater(SendPublisher.class, "wip");
 
@@ -88,6 +88,9 @@ class SendPublisher<V extends ReferenceCounted> extends Flux<ByteBuf> {
         .newPromise()
         .addListener(
             future -> {
+              if (future.cause() != null) {
+                future.cause().printStackTrace();
+              }
               if (requested != Long.MAX_VALUE) {
                 requested--;
               }
